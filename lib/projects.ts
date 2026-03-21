@@ -21,7 +21,7 @@ export const projects: Project[] = [
     title: "Chest X-ray CNN",
     description: "Deep learning model for automated chest X-ray classification.",
     tech: ["Python", "TensorFlow", "Keras", "Deep Learning"],
-    icon: "/ai.png",
+    icon: "/icons8-ai-48.png",
     links: {
       github: "https://github.com/sahariq/chest-xray-cnn"
     },
@@ -33,7 +33,7 @@ export const projects: Project[] = [
     title: "Aegis / AegisIDS",
     description: "Cybersecurity backend and intrusion detection system.",
     tech: ["Python", "FastAPI", "Cybersecurity", "Backend"],
-    icon: "/lock.png",
+    icon: "/icons8-cybersecurity-48.png",
     links: {
       github: "https://github.com/sahariq/Aegis",
       ids: "https://github.com/sahariq/AegisIDS"
@@ -46,7 +46,7 @@ export const projects: Project[] = [
     title: "Secure End-to-End Encrypted Messaging & File Sharing",
     description: "A public secure messaging and file sharing system with end-to-end encryption.",
     tech: ["JavaScript", "Node.js", "Crypto", "Web"],
-    icon: "/messenger.png",
+    icon: "/icons8-message-48.png",
     links: {
       github: "https://github.com/sahariq/Secure-End-to-End-Encrypted-Messaging-File-Sharing-System"
     },
@@ -58,7 +58,7 @@ export const projects: Project[] = [
     title: "AI Agent for Disaster Resource & Volunteer Allocation",
     description: "AI agent to optimize allocation of resources and volunteers during disasters.",
     tech: ["Python", "AI", "Optimization", "Multi-Agent Systems"],
-    icon: "/ai.png",
+    icon: "/icons8-disaster-48.png",
     links: {
       github: "https://github.com/sahariq/AI-Agent-for-Disaster-Resource-and-Volunteer-Allocation"
     },
@@ -70,7 +70,7 @@ export const projects: Project[] = [
     title: "DigiXTech",
     description: "A digital technology platform for modern business solutions.",
     tech: ["JavaScript", "React", "Node.js", "Web"],
-    icon: "/chrome.png", // Suggest replacing with a tech/business icon from the internet
+    icon: "/icons8-cloud-development-48.png",
     links: {
       github: "https://github.com/sahariq/DigiXTech"
     },
@@ -82,7 +82,7 @@ export const projects: Project[] = [
     title: "Watch Party",
     description: "A web app for synchronized video watching with friends.",
     tech: ["JavaScript", "WebRTC", "Node.js", "React"],
-    icon: "/Videos file.ico", // Suggest replacing with a play/video icon from the internet
+    icon: "/icons8-movie-48.png",
     links: {
       github: "https://github.com/sahariq/watch-party"
     },
@@ -94,7 +94,7 @@ export const projects: Project[] = [
     title: "Movie Recommender",
     description: "A machine learning-based movie recommendation system.",
     tech: ["Python", "Machine Learning", "Flask", "Recommender Systems"],
-    icon: "/Folder Videos.ico", // Suggest replacing with a movie icon from the internet
+    icon: "/icons8-movie-48 (1).png",
     links: {
       github: "https://github.com/sahariq/movie_recommender"
     },
@@ -106,7 +106,7 @@ export const projects: Project[] = [
     title: "Iqbal CardioCare",
     description: "A healthcare web app for cardiac patient management.",
     tech: ["JavaScript", "React", "Node.js", "Healthcare"],
-    icon: "/Heart.ico", // Suggest replacing with a heart/health icon from the internet
+    icon: "/icons8-doctor-48.png",
     links: {
       github: "https://github.com/sahariq/iqbal-cardiocare",
       demo: "https://iqbal-cardiocare.vercel.app"
