@@ -1,0 +1,1 @@
+A modern Windows 11–style portfolio website built with Next.js and React, featuring a desktop-like interface, app windows, and a built-in resume viewer.
