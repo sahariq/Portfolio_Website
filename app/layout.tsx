@@ -1,10 +1,13 @@
+
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
+import DesktopWarningPopup from "../components/DesktopWarningPopup"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
+
 
 export const metadata: Metadata = {
   title: "Portfolio OS - Windows 11 Style",
@@ -28,6 +31,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.variable} font-sans antialiased overflow-hidden`} suppressHydrationWarning>
+        <DesktopWarningPopup />
         {children}
         <Analytics />
       </body>
