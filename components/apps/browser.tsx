@@ -400,7 +400,7 @@ export function Browser() {
   return (
     <div className="flex h-full flex-col">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 p-2 bg-[#151528] border-b border-white/10">
+      <div className="tabs-scroll-x flex items-center gap-2 p-2 bg-[#151528] border-b border-white/10" style={{overflowX: 'auto'}}>
         <button
           onClick={goBack}
           disabled={!canGoBack}

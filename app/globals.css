@@ -1,3 +1,42 @@
+/* Horizontal Scroll Utility for Tabs */
+.tabs-scroll-x {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--win-accent-primary, #60cdff) #222;
+}
+
+.tabs-scroll-x::-webkit-scrollbar {
+  height: 6px;
+}
+.tabs-scroll-x::-webkit-scrollbar-thumb {
+  background: var(--win-accent-primary, #60cdff);
+  border-radius: 3px;
+}
+/* Responsive Grid Utility */
+.responsive-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .responsive-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (min-width: 1024px) {
+  .responsive-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+@media (min-width: 1280px) {
+  .responsive-grid {
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+  }
+}
 @import "tailwindcss";
 @import "tw-animate-css";
 /* Import Windows 11 design system tokens and utilities */

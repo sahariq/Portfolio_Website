@@ -34,6 +34,14 @@ import {
 import { cn } from "@/lib/utils"
 import { VirtualFileSystem } from "@/apps/photo-viewer/lib/virtual-file-system"
 import type { FileMetadata } from "@/apps/photo-viewer/lib/file-system-types"
+import { useFileExplorerStore } from "@/store/file-explorer-store"
+
+function normalizeExplorerPath(path: string): string {
+  const withForwardSlashes = path.replace(/\\/g, "/")
+  const withLeadingSlash = withForwardSlashes.startsWith("/") ? withForwardSlashes : `/${withForwardSlashes}`
+  const normalized = withLeadingSlash.replace(/\/+/g, "/")
+  return normalized.length > 1 ? normalized.replace(/\/+$/, "") : normalized
+}
 
 interface FileItem {
   id: string
@@ -145,7 +153,43 @@ function ContextMenu({ x, y, item, onClose, onAction }: ContextMenuProps) {
 
 export function FileExplorer({ appId }: FileExplorerProps) {
   const { openWindow } = useWindowStore()
+  const setCachedDirectory = useFileExplorerStore((state) => state.setCachedDirectory)
   const vfsRef = useRef<VirtualFileSystem | null>(null)
+  const requestIdRef = useRef(0)
+
+  const mapFilesToItems = (files: FileMetadata[]): FileItem[] => {
+    return files.map((file, index) => {
+      let icon = File
+      if (file.type === "image") icon = ImageIcon
+      else if (file.type === "document") icon = FileText
+      else if (file.type === "video") icon = Video
+      else if (file.type === "other" && file.name.includes(".")) icon = File
+      else icon = Folder
+
+      let modified = ""
+      if (file.modifiedDate) {
+        let dateObj = file.modifiedDate
+        if (typeof dateObj === "string") {
+          const parsed = new Date(dateObj)
+          if (!isNaN(parsed.getTime())) dateObj = parsed
+        }
+        if (dateObj instanceof Date && !isNaN(dateObj.getTime())) {
+          modified = dateObj.toLocaleDateString()
+        }
+      }
+
+      return {
+        id: `${file.path}-${index}`,
+        name: file.name,
+        type: file.type === "directory" ? "folder" : "file",
+        icon,
+        modified,
+        size: file.size ? `${(file.size / 1024).toFixed(1)} KB` : "",
+        path: normalizeExplorerPath(file.path),
+        metadata: file,
+      }
+    })
+  }
   
   const getInitialPath = () => {
     if (appId === "my-computer") return "/"
@@ -162,8 +206,9 @@ export function FileExplorer({ appId }: FileExplorerProps) {
     return "/"
   }
   
-  const [currentPath, setCurrentPath] = useState(getInitialPath())
-  const [pathHistory, setPathHistory] = useState<string[]>([getInitialPath()])
+  const initialPath = normalizeExplorerPath(getInitialPath())
+  const [currentPath, setCurrentPath] = useState(initialPath)
+  const [pathHistory, setPathHistory] = useState<string[]>([initialPath])
   const [historyIndex, setHistoryIndex] = useState(0)
   const [viewMode, setViewMode] = useState<"grid" | "list">("list")
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
@@ -186,44 +231,32 @@ export function FileExplorer({ appId }: FileExplorerProps) {
   useEffect(() => {
     const loadDirectory = async () => {
       if (!vfsRef.current) return
-      
-      setIsLoading(true)
+
+      const normalizedPath = normalizeExplorerPath(currentPath)
+      const cachedFiles = useFileExplorerStore.getState().directoryCache[normalizedPath]
+      const requestId = ++requestIdRef.current
+
+      if (cachedFiles) {
+        const cachedItems = mapFilesToItems(cachedFiles)
+        const filteredCachedItems = searchQuery
+          ? cachedItems.filter((item) => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+          : cachedItems
+        setCurrentContent(filteredCachedItems)
+      } else {
+        setCurrentContent([])
+      }
+
+      setIsLoading(!cachedFiles)
       try {
-        const files = await vfsRef.current.listFiles(currentPath)
+        const files = await vfsRef.current.listFiles(normalizedPath)
+
+        // Ignore stale responses from earlier path loads.
+        if (requestId !== requestIdRef.current) {
+          return
+        }
         
-        // Convert FileMetadata to FileItem
-        const items: FileItem[] = files.map((file, index) => {
-          let icon = File
-          if (file.type === 'image') icon = ImageIcon
-          else if (file.type === 'document') icon = FileText
-          else if (file.type === 'video') icon = Video
-          else if (file.type === 'other' && file.name.includes('.')) icon = File
-          else icon = Folder
-
-          // Fix: robust date formatting
-          let modified = ''
-          if (file.modifiedDate) {
-            let dateObj = file.modifiedDate
-            if (typeof dateObj === 'string') {
-              const parsed = new Date(dateObj)
-              if (!isNaN(parsed.getTime())) dateObj = parsed
-            }
-            if (dateObj instanceof Date && !isNaN(dateObj.getTime())) {
-              modified = dateObj.toLocaleDateString()
-            }
-          }
-
-          return {
-            id: `${file.path}-${index}`,
-            name: file.name,
-            type: file.type === 'image' || file.type === 'video' || file.type === 'document' ? 'file' : 'folder',
-            icon,
-            modified,
-            size: file.size ? `${(file.size / 1024).toFixed(1)} KB` : '',
-            path: file.path,
-            metadata: file,
-          }
-        })
+        const items = mapFilesToItems(files)
+        setCachedDirectory(normalizedPath, files)
         
         // Apply search filter
         let filtered = items
@@ -234,9 +267,13 @@ export function FileExplorer({ appId }: FileExplorerProps) {
         setCurrentContent(filtered)
       } catch (error) {
         console.error('Failed to load directory:', error)
-        setCurrentContent([])
+        if (!cachedFiles) {
+          setCurrentContent([])
+        }
       } finally {
-        setIsLoading(false)
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false)
+        }
       }
     }
     
@@ -244,10 +281,11 @@ export function FileExplorer({ appId }: FileExplorerProps) {
   }, [currentPath, searchQuery])
 
   const navigateTo = (path: string) => {
-    const newHistory = [...pathHistory.slice(0, historyIndex + 1), path]
+    const normalizedPath = normalizeExplorerPath(path)
+    const newHistory = [...pathHistory.slice(0, historyIndex + 1), normalizedPath]
     setPathHistory(newHistory)
     setHistoryIndex(newHistory.length - 1)
-    setCurrentPath(path)
+    setCurrentPath(normalizedPath)
     setSelectedItem(null)
   }
 
@@ -283,7 +321,7 @@ export function FileExplorer({ appId }: FileExplorerProps) {
 
   const handleSidebarClick = (id: string, name: string) => {
     setSidebarSelectedId(id)
-    navigateTo(name)
+    navigateTo(`/${name}`)
   }
 
   const handleContextMenu = (e: React.MouseEvent, item: FileItem | null) => {
@@ -298,6 +336,12 @@ export function FileExplorer({ appId }: FileExplorerProps) {
   }
 
   const pathSegments = currentPath === "/" ? ["This PC"] : ["This PC", ...currentPath.split('/').filter(s => s.length > 0)]
+
+  const getSegmentPath = (index: number): string => {
+    if (index === 0) return "/"
+    const segmentPath = `/${pathSegments.slice(1, index + 1).join("/")}`
+    return normalizeExplorerPath(segmentPath)
+  }
 
   return (
     <div className="flex flex-col h-full bg-[#191919] text-white select-none">
@@ -349,7 +393,7 @@ export function FileExplorer({ appId }: FileExplorerProps) {
               <div key={index} className="flex items-center gap-0.5 min-w-0">
                 {index > 0 && <ChevronRight className="h-3 w-3 text-white/30 shrink-0" />}
                 <button
-                  onClick={() => navigateTo(segment)}
+                  onClick={() => navigateTo(getSegmentPath(index))}
                   className={cn(
                     "px-1 py-0.5 rounded hover:bg-white/8 transition-colors truncate",
                     index === pathSegments.length - 1 ? "text-white/90" : "text-white/60",

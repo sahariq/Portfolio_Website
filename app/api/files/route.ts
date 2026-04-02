@@ -8,9 +8,16 @@ function isValidPath(path: string) {
   return typeof path === 'string' && !path.includes('..') && !path.includes('\0');
 }
 
+function normalizeApiPath(path: string) {
+  const withForwardSlashes = path.replace(/\\/g, '/');
+  const withLeadingSlash = withForwardSlashes.startsWith('/') ? withForwardSlashes : `/${withForwardSlashes}`;
+  const normalized = withLeadingSlash.replace(/\/+/g, '/');
+  return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const dirPath = searchParams.get('path') || '/';
+  const dirPath = normalizeApiPath(searchParams.get('path') || '/');
   if (!isValidPath(dirPath)) {
     return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
   }
@@ -23,7 +30,7 @@ export async function GET(req: NextRequest) {
         const stats = await fs.stat(fullPath);
         return {
           name: entry.name,
-          path: join(dirPath, entry.name),
+          path: normalizeApiPath(`${dirPath}/${entry.name}`),
           size: stats.size,
           type: entry.isDirectory() ? 'directory' : 'file',
           modifiedDate: stats.mtime,
