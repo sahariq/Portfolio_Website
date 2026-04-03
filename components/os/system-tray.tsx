@@ -37,7 +37,7 @@ function TrayIconButton({
       <button
         onClick={onClick}
         className={cn(
-          "flex h-full px-1.5 items-center justify-center transition-all duration-100",
+          "flex min-h-[44px] min-w-[44px] px-2 md:px-1.5 items-center justify-center transition-all duration-100",
           "hover:bg-white/10 active:scale-[0.98] hover:scale-[1.03]",
           className,
         )}
@@ -84,7 +84,7 @@ export function SystemTray() {
         <ChevronUp className="h-3.5 w-3.5 text-white/70" strokeWidth={2} />
       </TrayIconButton>
 
-      <div className="flex items-center h-9 mx-1 px-1 rounded-[6px] hover:bg-white/10 transition-all cursor-pointer" suppressHydrationWarning>
+      <div className="flex items-center min-h-[44px] mx-1 px-2 md:px-1 rounded-[6px] hover:bg-white/10 transition-all cursor-pointer" suppressHydrationWarning>
         <div className="flex items-center gap-1.5" suppressHydrationWarning>
           <Wifi className="h-4 w-4 text-white/80" strokeWidth={1.5} />
           <Volume2 className="h-4 w-4 text-white/80" strokeWidth={1.5} />
@@ -92,13 +92,13 @@ export function SystemTray() {
         </div>
       </div>
 
-      <button className="h-9 px-2.5 flex flex-col items-end justify-center rounded-[6px] hover:bg-white/10 transition-all">
+      <button className="min-h-[44px] px-2.5 flex flex-col items-end justify-center rounded-[6px] hover:bg-white/10 transition-all">
         <span className="text-[12px] text-white/95 leading-tight font-normal tracking-tight">{formattedTime}</span>
         <span className="text-[12px] text-white/95 leading-tight font-normal tracking-tight">{formattedDate}</span>
       </button>
 
       <button
-        className="h-full w-[5px] ml-1 hover:bg-[#60cdff]/40 transition-colors border-l border-white/[0.06]"
+        className="h-full w-3 ml-1 hover:bg-[#60cdff]/40 transition-colors border-l border-white/[0.06]"
         aria-label="Show desktop"
       />
     </div>

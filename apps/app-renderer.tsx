@@ -8,7 +8,12 @@ const Notepad = dynamic(() => import("./notepad").then((m) => m.Notepad), { ssr:
 const Terminal = dynamic(() => import("./terminal").then((m) => m.Terminal), { ssr: false })
 const Browser = dynamic(() => import("./browser").then((m) => m.Browser), { ssr: false })
 const Settings = dynamic(() => import("./settings").then((m) => m.Settings), { ssr: false })
+const SettingsErrorBoundary = dynamic(
+  () => import("./settings-error-boundary").then((m) => m.SettingsErrorBoundary),
+  { ssr: false },
+)
 const About = dynamic(() => import("./about").then((m) => m.About), { ssr: false })
+const Paint = dynamic(() => import("./paint").then((m) => m.Paint), { ssr: false })
 const PDFViewer = dynamic(() => import("./pdf-viewer").then((m) => m.PDFViewer), { ssr: false })
 const PhotoViewer = dynamic(() => import("../apps/photo-viewer").then((m) => m.PhotoViewer), { ssr: false })
 const ProjectsApp = dynamic(() => import("./projects"), { ssr: false })
@@ -33,9 +38,15 @@ export function AppRenderer({ appId, windowId }: AppRendererProps) {
     case "browser":
       return <Browser />
     case "settings":
-      return <Settings />
+      return (
+        <SettingsErrorBoundary>
+          <Settings />
+        </SettingsErrorBoundary>
+      )
     case "about":
       return <About />
+    case "paint":
+      return <Paint />
     case "pdf":
       return <PDFViewer />
     case "photos":

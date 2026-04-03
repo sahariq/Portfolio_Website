@@ -58,7 +58,7 @@ function TaskbarIconButton({
         onClick={onClick}
         data-window-id={dataWindowId}
         className={cn(
-          "relative flex h-9 w-9 items-center justify-center rounded-[8px] transition-all duration-100",
+          "relative flex h-11 w-11 items-center justify-center rounded-[8px] transition-all duration-100 md:h-9 md:w-9",
           "hover:bg-white/10 active:scale-[0.98] hover:scale-[1.03]",
           isActive && "bg-white/10",
           className,
@@ -123,7 +123,7 @@ export function Taskbar() {
 
       <div 
         data-taskbar 
-        className="fixed bottom-0 left-0 right-0 h-[46px] bg-[#1c1c1c]/92 backdrop-blur-xl border-t border-white/[0.06] flex items-center z-[9999]"
+        className="fixed bottom-0 left-0 right-0 h-[56px] md:h-[46px] bg-[#1c1c1c]/92 backdrop-blur-xl border-t border-white/[0.06] flex items-center z-[9999] pb-[env(safe-area-inset-bottom)]"
         suppressHydrationWarning
       >
         {/* Left section: Start button + Search + Pinned apps */}

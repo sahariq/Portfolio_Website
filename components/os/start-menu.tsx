@@ -201,14 +201,14 @@ export const StartMenu = forwardRef<StartMenuRef, StartMenuProps>(function Start
       onKeyDown={onKeyDown}
       onMouseMove={onMouseMove}
       onMouseLeave={() => setShowScrolling(false)}
-      className="absolute bottom-12 left-0 z-[9998] outline-none"
+      className="absolute bottom-[56px] md:bottom-12 left-0 z-[9998] outline-none"
       aria-label="Start menu"
     >
       {/* Shell - Flatter panel style */}
       <div
         className={[
           "relative overflow-hidden",
-          "w-[420px] max-w-[92vw] h-[560px] max-h-[calc(100vh-64px)]",
+          "w-[calc(100vw-16px)] md:w-[420px] max-w-[96vw] md:max-w-[92vw] h-[calc(100dvh-72px)] md:h-[560px] max-h-[calc(100dvh-64px)]",
           "rounded-[12px]",
           "border border-white/20",
           "bg-[hsl(0_0%_10%_/_75%)]",
@@ -231,7 +231,7 @@ export const StartMenu = forwardRef<StartMenuRef, StartMenuProps>(function Start
               {/* START header */}
               <button
                 onClick={() => setActiveLeft("allapps")}
-                className="group relative flex h-11 w-full items-center gap-2 rounded-[8px] px-2 text-left hover:bg-[hsl(0_0%_35%_/_35%)]"
+                className="group relative flex min-h-[44px] h-11 w-full items-center gap-2 rounded-[8px] px-2 text-left hover:bg-[hsl(0_0%_35%_/_35%)]"
               >
                 <Menu className="h-[18px] w-[18px] text-white/75 shrink-0" />
                 {sidebarHovered && <span className="text-xs font-semibold tracking-widest text-white/70">START</span>}
@@ -241,7 +241,7 @@ export const StartMenu = forwardRef<StartMenuRef, StartMenuProps>(function Start
               <button
                 onClick={() => setActiveLeft("allapps")}
                 className={[
-                  "group relative mt-1 flex h-11 w-full items-center gap-2 rounded-[8px] px-2 text-left",
+                  "group relative mt-1 flex min-h-[44px] h-11 w-full items-center gap-2 rounded-[8px] px-2 text-left",
                   "hover:bg-[hsl(0_0%_35%_/_35%)]",
                   activeLeft === "allapps" ? "bg-[hsl(0_0%_35%_/_55%)]" : "",
                 ].join(" ")}
@@ -258,7 +258,7 @@ export const StartMenu = forwardRef<StartMenuRef, StartMenuProps>(function Start
                 <button
                   onClick={openDocuments}
                   className={[
-                    "group relative flex h-11 w-full items-center gap-2 rounded-[8px] px-2 text-left",
+                    "group relative flex min-h-[44px] h-11 w-full items-center gap-2 rounded-[8px] px-2 text-left",
                     "hover:bg-[hsl(0_0%_35%_/_35%)]",
                     activeLeft === "documents" ? "bg-[hsl(0_0%_35%_/_55%)]" : "",
                   ].join(" ")}
@@ -273,7 +273,7 @@ export const StartMenu = forwardRef<StartMenuRef, StartMenuProps>(function Start
                 <button
                   onClick={openPictures}
                   className={[
-                    "group relative flex h-11 w-full items-center gap-2 rounded-[8px] px-2 text-left",
+                    "group relative flex min-h-[44px] h-11 w-full items-center gap-2 rounded-[8px] px-2 text-left",
                     "hover:bg-[hsl(0_0%_35%_/_35%)]",
                     activeLeft === "pictures" ? "bg-[hsl(0_0%_35%_/_55%)]" : "",
                   ].join(" ")}
@@ -288,7 +288,7 @@ export const StartMenu = forwardRef<StartMenuRef, StartMenuProps>(function Start
                 <button
                   onClick={openVideos}
                   className={[
-                    "group relative flex h-11 w-full items-center gap-2 rounded-[8px] px-2 text-left",
+                    "group relative flex min-h-[44px] h-11 w-full items-center gap-2 rounded-[8px] px-2 text-left",
                     "hover:bg-[hsl(0_0%_35%_/_35%)]",
                     activeLeft === "videos" ? "bg-[hsl(0_0%_35%_/_55%)]" : "",
                   ].join(" ")}
@@ -306,7 +306,7 @@ export const StartMenu = forwardRef<StartMenuRef, StartMenuProps>(function Start
                     close()
                   }}
                   className={[
-                    "group relative flex h-11 w-full items-center gap-2 rounded-[8px] px-2 text-left",
+                    "group relative flex min-h-[44px] h-11 w-full items-center gap-2 rounded-[8px] px-2 text-left",
                     "hover:bg-[hsl(0_0%_35%_/_35%)]",
                     activeLeft === "power" ? "bg-[hsl(0_0%_35%_/_55%)]" : "",
                   ].join(" ")}
@@ -322,7 +322,7 @@ export const StartMenu = forwardRef<StartMenuRef, StartMenuProps>(function Start
               {/* Sticky profile */}
               <div className="mt-auto">
                 <div className="my-2 h-px w-full bg-white/10" />
-                <button className="flex h-[52px] w-full items-center gap-2 rounded-[8px] px-2 hover:bg-[hsl(0_0%_35%_/_35%)]">
+                <button className="flex min-h-[52px] w-full items-center gap-2 rounded-[8px] px-2 hover:bg-[hsl(0_0%_35%_/_35%)]">
                   <div className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-sky-500/90 shrink-0">
                     <User className="h-4 w-4 text-white" />
                   </div>
@@ -389,7 +389,7 @@ export const StartMenu = forwardRef<StartMenuRef, StartMenuProps>(function Start
                               onMouseEnter={() => setSelectedIndex(idx)}
                               onClick={() => handleOpenApp(row.id)}
                               className={[
-                                "group relative flex h-[40px] w-full items-center gap-3 rounded-[6px] px-2 text-left",
+                                "group relative flex min-h-[44px] w-full items-center gap-3 rounded-[6px] px-2 text-left",
                                 "hover:bg-[hsl(0_0%_35%_/_35%)]",
                                 isSelected ? "bg-[hsl(0_0%_40%_/_45%)]" : "",
                               ].join(" ")}
@@ -414,7 +414,7 @@ export const StartMenu = forwardRef<StartMenuRef, StartMenuProps>(function Start
                 onClick={() => {
                   handleOpenApp("pdf")
                 }}
-                className="flex h-[40px] w-full items-center gap-2 rounded-[8px] bg-[hsl(0_0%_8%_/_60%)] px-3 hover:bg-[hsl(0_0%_35%_/_35%)]"
+                className="flex min-h-[44px] w-full items-center gap-2 rounded-[8px] bg-[hsl(0_0%_8%_/_60%)] px-3 hover:bg-[hsl(0_0%_35%_/_35%)]"
               >
                 <img src="/pdf.png" alt="PDF" className="h-5 w-5 object-contain shrink-0" />
                 <span className="text-sm font-medium text-white/90">Resume - PDF</span>

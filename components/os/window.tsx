@@ -9,6 +9,7 @@ import { Minus, Square, X, Copy } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { apps } from "@/lib/apps"
 import { AppRenderer } from "@/apps/app-renderer"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface WindowProps {
   window: WindowState
@@ -32,6 +33,7 @@ export function Window({ window }: WindowProps) {
 
   const { animationsEnabled } = useSettingsStore()
   const { playClose, playMinimize, playMaximize } = useSystemSounds()
+  const isMobile = useIsMobile()
 
   const windowRef = useRef<HTMLDivElement>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -46,6 +48,40 @@ export function Window({ window }: WindowProps) {
   const [minimizeTarget, setMinimizeTarget] = useState<{ x: number; y: number } | null>(null)
 
   const isActive = activeWindowId === window.id
+
+  const constrainWindowToViewport = useCallback(() => {
+    if (isMobile || window.isMaximized || window.snapEdge || window.isMinimized) return
+
+    const viewportWidth = globalThis.innerWidth
+    const viewportHeight = globalThis.innerHeight - TASKBAR_HEIGHT
+    const maxX = Math.max(0, viewportWidth - window.width)
+    const maxY = Math.max(0, viewportHeight - window.height)
+
+    const clampedX = Math.min(Math.max(0, window.x), maxX)
+    const clampedY = Math.min(Math.max(0, window.y), maxY)
+
+    if (clampedX !== window.x || clampedY !== window.y) {
+      updateWindowPosition(window.id, clampedX, clampedY)
+    }
+
+    const clampedWidth = Math.min(window.width, viewportWidth)
+    const clampedHeight = Math.min(window.height, viewportHeight)
+
+    if (clampedWidth !== window.width || clampedHeight !== window.height) {
+      updateWindowSize(window.id, clampedWidth, clampedHeight)
+    }
+  }, [isMobile, updateWindowPosition, updateWindowSize, window.height, window.id, window.isMaximized, window.isMinimized, window.snapEdge, window.width, window.x, window.y])
+
+  useEffect(() => {
+    constrainWindowToViewport()
+
+    const handleViewportResize = () => {
+      constrainWindowToViewport()
+    }
+
+    globalThis.addEventListener("resize", handleViewportResize)
+    return () => globalThis.removeEventListener("resize", handleViewportResize)
+  }, [constrainWindowToViewport])
 
   useEffect(() => {
     if (animationsEnabled) {
@@ -97,6 +133,7 @@ export function Window({ window }: WindowProps) {
 
   const handleTitleBarMouseDown = useCallback(
     (e: MouseEvent) => {
+      if (isMobile) return
       if ((e.target as HTMLElement).closest(".window-controls")) return
       e.preventDefault()
       focusWindow(window.id)
@@ -110,7 +147,7 @@ export function Window({ window }: WindowProps) {
       }
       setIsDragging(true)
     },
-    [focusWindow, restoreWindow, window],
+    [focusWindow, isMobile, restoreWindow, window],
   )
 
   const handleResizeStart = useCallback(
@@ -139,10 +176,13 @@ export function Window({ window }: WindowProps) {
   useEffect(() => {
     const handleMouseMove = (e: globalThis.MouseEvent) => {
       if (isDragging) {
-        const newX = e.clientX - dragOffset.x
-        const newY = Math.max(0, e.clientY - dragOffset.y)
+        const viewportWidth = globalThis.innerWidth
+        const viewportHeight = globalThis.innerHeight - TASKBAR_HEIGHT
+        const maxX = Math.max(0, viewportWidth - window.width)
+        const maxY = Math.max(0, viewportHeight - window.height)
+        const newX = Math.min(Math.max(0, e.clientX - dragOffset.x), maxX)
+        const newY = Math.min(Math.max(0, e.clientY - dragOffset.y), maxY)
         const screenWidth = globalThis.innerWidth
-        const screenHeight = globalThis.innerHeight - TASKBAR_HEIGHT
 
         if (e.clientX <= SNAP_THRESHOLD) {
           setPreviewSnap("left")
@@ -152,7 +192,7 @@ export function Window({ window }: WindowProps) {
           setPreviewSnap("top")
         } else {
           setPreviewSnap(null)
-          updateWindowPosition(window.id, Math.max(0, newX), Math.min(newY, screenHeight - 40))
+          updateWindowPosition(window.id, newX, newY)
         }
       }
 
@@ -165,6 +205,9 @@ export function Window({ window }: WindowProps) {
         let newX = resizeStart.winX
         let newY = resizeStart.winY
 
+        const viewportWidth = globalThis.innerWidth
+        const viewportHeight = globalThis.innerHeight - TASKBAR_HEIGHT
+
         if (resizeEdge.includes("e")) newWidth = Math.max(window.minWidth, resizeStart.width + deltaX)
         if (resizeEdge.includes("w")) {
           newWidth = Math.max(window.minWidth, resizeStart.width - deltaX)
@@ -175,6 +218,11 @@ export function Window({ window }: WindowProps) {
           newHeight = Math.max(window.minHeight, resizeStart.height - deltaY)
           newY = resizeStart.winY + (resizeStart.height - newHeight)
         }
+
+        newWidth = Math.min(newWidth, viewportWidth)
+        newHeight = Math.min(newHeight, viewportHeight)
+        newX = Math.min(Math.max(0, newX), Math.max(0, viewportWidth - newWidth))
+        newY = Math.min(Math.max(0, newY), Math.max(0, viewportHeight - newHeight))
 
         updateWindowSize(window.id, newWidth, newHeight)
         if (resizeEdge.includes("w") || resizeEdge.includes("n")) {
@@ -220,6 +268,17 @@ export function Window({ window }: WindowProps) {
   if (window.isMinimized && !isMinimizing) return null
 
   const getWindowStyle = () => {
+    if (isMobile) {
+      return {
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: `calc(100dvh - ${TASKBAR_HEIGHT}px)`,
+        zIndex: window.zIndex,
+        borderRadius: 0,
+      }
+    }
+
     if (isMinimizing && minimizeTarget) {
       const windowCenterX = window.x + window.width / 2
       const windowCenterY = window.y + window.height / 2
@@ -243,7 +302,7 @@ export function Window({ window }: WindowProps) {
         top: 0,
         left: 0,
         width: "100%",
-        height: `calc(100vh - ${TASKBAR_HEIGHT}px)`,
+        height: `calc(100dvh - ${TASKBAR_HEIGHT}px)`,
         zIndex: window.zIndex,
         borderRadius: 0,
       }
@@ -254,7 +313,7 @@ export function Window({ window }: WindowProps) {
         top: 0,
         left: 0,
         width: "50%",
-        height: `calc(100vh - ${TASKBAR_HEIGHT}px)`,
+        height: `calc(100dvh - ${TASKBAR_HEIGHT}px)`,
         zIndex: window.zIndex,
       }
     }
@@ -264,7 +323,7 @@ export function Window({ window }: WindowProps) {
         top: 0,
         left: "50%",
         width: "50%",
-        height: `calc(100vh - ${TASKBAR_HEIGHT}px)`,
+        height: `calc(100dvh - ${TASKBAR_HEIGHT}px)`,
         zIndex: window.zIndex,
       }
     }
@@ -274,7 +333,7 @@ export function Window({ window }: WindowProps) {
         top: 0,
         left: 0,
         width: "100%",
-        height: `calc(100vh - ${TASKBAR_HEIGHT}px)`,
+        height: `calc(100dvh - ${TASKBAR_HEIGHT}px)`,
         zIndex: window.zIndex,
       }
     }
@@ -288,7 +347,7 @@ export function Window({ window }: WindowProps) {
     }
   }
 
-  const canResize = !window.isMaximized && !window.snapEdge
+  const canResize = !isMobile && !window.isMaximized && !window.snapEdge
 
   return (
     <>
@@ -329,7 +388,8 @@ export function Window({ window }: WindowProps) {
         {/* Title bar */}
         <div
           className={cn(
-            "window-titlebar flex h-9 items-center justify-between select-none shrink-0",
+            "window-titlebar flex items-center justify-between select-none shrink-0",
+            isMobile ? "h-11" : "h-9",
             isActive ? "bg-[#2d2d2d]" : "bg-[#252525]",
             !window.isMaximized && !window.snapEdge && "rounded-t-lg",
           )}
@@ -344,14 +404,20 @@ export function Window({ window }: WindowProps) {
           <div className="window-controls flex items-center shrink-0">
             <button
               onClick={handleMinimize}
-              className="flex h-9 w-11 items-center justify-center text-white/80 hover:bg-white/10 transition-colors"
+              className={cn(
+                "items-center justify-center text-white/80 hover:bg-white/10 transition-colors",
+                isMobile ? "hidden" : "flex h-9 w-11",
+              )}
               aria-label="Minimize"
             >
               <Minus className="h-4 w-4" strokeWidth={1} />
             </button>
             <button
               onClick={handleMaximizeToggle}
-              className="flex h-9 w-11 items-center justify-center text-white/80 hover:bg-white/10 transition-colors"
+              className={cn(
+                "items-center justify-center text-white/80 hover:bg-white/10 transition-colors",
+                isMobile ? "hidden" : "flex h-9 w-11",
+              )}
               aria-label={window.isMaximized ? "Restore" : "Maximize"}
             >
               {window.isMaximized || window.snapEdge ? (
@@ -363,7 +429,8 @@ export function Window({ window }: WindowProps) {
             <button
               onClick={handleClose}
               className={cn(
-                "flex h-9 w-11 items-center justify-center text-white/80 transition-colors",
+                "flex items-center justify-center text-white/80 transition-colors min-h-[44px] min-w-[44px]",
+                isMobile ? "h-11 w-11" : "h-9 w-11",
                 !window.isMaximized && !window.snapEdge && "rounded-tr-lg",
                 "hover:bg-[#c42b1c] hover:text-white",
               )}

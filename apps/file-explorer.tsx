@@ -54,6 +54,17 @@ interface FileItem {
   metadata?: FileMetadata
 }
 
+const INITIAL_HOME_PATH = "/Home"
+
+const initialHomeItems: FileItem[] = [
+  { id: "home-desktop", name: "Desktop", type: "folder", icon: Monitor, path: "/Desktop" },
+  { id: "home-documents", name: "Documents", type: "folder", icon: Folder, path: "/Documents" },
+  { id: "home-downloads", name: "Downloads", type: "folder", icon: Download, path: "/Downloads" },
+  { id: "home-pictures", name: "Pictures", type: "folder", icon: ImageIcon, path: "/Pictures" },
+  { id: "home-music", name: "Music", type: "folder", icon: Music, path: "/Music" },
+  { id: "home-videos", name: "Videos", type: "folder", icon: Video, path: "/Videos" },
+]
+
 const quickAccessItems: FileItem[] = [
   { id: "desktop", name: "Desktop", type: "folder", icon: Monitor },
   { id: "downloads", name: "Downloads", type: "folder", icon: Download },
@@ -193,6 +204,7 @@ export function FileExplorer({ appId }: FileExplorerProps) {
   
   const getInitialPath = () => {
     if (appId === "my-computer") return "/"
+    if (appId === "file-explorer") return INITIAL_HOME_PATH
     if (appId === "projects") return "/projects"
     // Normalize drive/folder names for Windows-style drives and common folders
     if (appId === "c-drive") return "/C"
@@ -233,6 +245,16 @@ export function FileExplorer({ appId }: FileExplorerProps) {
       if (!vfsRef.current) return
 
       const normalizedPath = normalizeExplorerPath(currentPath)
+
+      if (normalizedPath === INITIAL_HOME_PATH) {
+        const filteredHomeItems = searchQuery
+          ? initialHomeItems.filter((item) => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+          : initialHomeItems
+        setCurrentContent(filteredHomeItems)
+        setIsLoading(false)
+        return
+      }
+
       const cachedFiles = useFileExplorerStore.getState().directoryCache[normalizedPath]
       const requestId = ++requestIdRef.current
 

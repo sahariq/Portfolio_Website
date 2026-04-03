@@ -105,7 +105,7 @@ export function Desktop() {
 
   return (
     <div 
-      className="relative h-screen w-screen overflow-hidden select-none" 
+      className="relative h-[100dvh] w-screen overflow-hidden select-none" 
       onClick={() => setStartMenuOpen(false)}
       suppressHydrationWarning
     >
