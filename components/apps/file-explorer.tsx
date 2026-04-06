@@ -53,6 +53,7 @@ import { useEffect } from "react"
 export function FileExplorer({ path: initialPath }: FileExplorerProps) {
   const [currentPath, setCurrentPath] = useState(initialPath)
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
+  const resumeUrl = encodeURI("/Sahar Iqbal Resume (7).pdf")
 
   // Sync currentPath with prop
   useEffect(() => {
@@ -82,6 +83,8 @@ export function FileExplorer({ path: initialPath }: FileExplorerProps) {
       if (mockFileSystem[newPath]) {
         setCurrentPath(newPath)
       }
+    } else if (item.name.toLowerCase().endsWith(".pdf")) {
+      window.open(resumeUrl, "_blank", "noopener,noreferrer")
     }
   }
 

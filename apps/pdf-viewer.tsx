@@ -3,7 +3,7 @@
 import { Download, ExternalLink } from "lucide-react"
 
 export function PDFViewer() {
-  const resumeUrl = "/Sahar Iqbal Resume  (7).pdf"
+  const resumeUrl = encodeURI("/Sahar Iqbal Resume (7).pdf")
 
   return (
     <div className="flex flex-col h-full w-full bg-[#1a1a1a] text-white">
@@ -14,7 +14,7 @@ export function PDFViewer() {
         <div className="flex gap-2 ml-auto">
           <a
             href={resumeUrl}
-            download="Sahar-Iqbal-Malik-Resume.pdf"
+            download="Sahar-Iqbal-Resume.pdf"
             className="flex items-center gap-2 px-3 py-2 rounded-lg border border-white/18 bg-white/5 hover:bg-white/10 transition-colors text-sm text-white/90 no-underline"
           >
             <Download className="h-4 w-4" />

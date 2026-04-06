@@ -8,6 +8,7 @@ import { Notepad } from "@/components/apps/notepad"
 import { Terminal } from "@/components/apps/terminal"
 import { Browser } from "@/components/apps/browser"
 import { Settings } from "@/components/apps/settings"
+import { PDFViewer } from "@/apps/pdf-viewer"
 import {
   Search,
   Power,
@@ -29,7 +30,7 @@ import {
   Monitor,
 } from "lucide-react"
 
-type AppId = "file-explorer" | "browser" | "notepad" | "terminal" | "settings"
+type AppId = "file-explorer" | "browser" | "notepad" | "terminal" | "settings" | "pdf"
 
 type AppRow = {
   id: AppId
@@ -64,7 +65,7 @@ export const StartMenu = memo(function StartMenu() {
       { id: "notepad", title: "IRC", icon: MessageCircle, section: "Internet" }, // placeholder
       { id: "notepad", title: "Messenger", icon: MessageCircle, section: "Internet" }, // placeholder
       { id: "notepad", title: "Marked", icon: FileText, section: "Office" }, // placeholder
-      { id: "notepad", title: "PDF", icon: FileText, section: "Office" }, // placeholder
+      { id: "pdf", title: "PDF", icon: FileText, section: "Office" },
       { id: "notepad", title: "Paint", icon: Paintbrush, section: "Graphics" }, // placeholder
       { id: "notepad", title: "Photo Viewer", icon: Camera, section: "Graphics" }, // placeholder
       { id: "file-explorer", title: "Files", icon: Folder, section: "System" },
@@ -105,6 +106,11 @@ export const StartMenu = memo(function StartMenu() {
           content = <Settings />
           width = 760
           height = 560
+          break
+        case "pdf":
+          content = <PDFViewer />
+          width = 860
+          height = 700
           break
       }
 
@@ -430,7 +436,7 @@ export const StartMenu = memo(function StartMenu() {
             {/* Pinned footer (Resume) */}
             <div className="border-t border-white/10 p-3">
               <button
-                onClick={() => handleOpenApp("file-explorer", "Resume - PDF", FileText)}
+                onClick={() => handleOpenApp("pdf", "Resume - PDF", FileText)}
                 className="flex h-12 w-full items-center gap-2 rounded-xl bg-white/[0.06] px-3 hover:bg-white/[0.10] active:bg-white/[0.14]"
               >
                 <FileText className="h-5 w-5 text-white/80" />

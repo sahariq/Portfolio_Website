@@ -338,6 +338,8 @@ export function FileExplorer({ appId }: FileExplorerProps) {
     } else if (item.name.endsWith(".txt")) {
       // Open text file in Notepad with file path
       openWindow({ ...apps.notepad, props: { filePath: item.path } })
+    } else if (item.name.toLowerCase().endsWith(".pdf")) {
+      openWindow(apps.pdf)
     }
   }
 
