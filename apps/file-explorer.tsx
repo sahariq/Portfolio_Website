@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { useWindowStore } from "@/store/window-store"
 import { apps } from "@/lib/apps"
 import {
@@ -35,12 +35,33 @@ import { cn } from "@/lib/utils"
 import { VirtualFileSystem } from "@/apps/photo-viewer/lib/virtual-file-system"
 import type { FileMetadata } from "@/apps/photo-viewer/lib/file-system-types"
 import { useFileExplorerStore } from "@/store/file-explorer-store"
+import type { WindowPayload } from "@/types/os"
 
 function normalizeExplorerPath(path: string): string {
   const withForwardSlashes = path.replace(/\\/g, "/")
   const withLeadingSlash = withForwardSlashes.startsWith("/") ? withForwardSlashes : `/${withForwardSlashes}`
   const normalized = withLeadingSlash.replace(/\/+/g, "/")
   return normalized.length > 1 ? normalized.replace(/\/+$/, "") : normalized
+}
+
+const pathFromPayload = (p?: WindowPayload) => (typeof p?.path === "string" ? (p.path as string) : undefined)
+
+const QUICK_ACCESS_IDS = ["desktop", "downloads", "documents", "pictures", "music", "videos"]
+
+function sidebarIdForPath(path: string): string | null {
+  const first = path.split("/").filter(Boolean)[0]?.toLowerCase()
+  return first && QUICK_ACCESS_IDS.includes(first) ? first : null
+}
+
+const AUDIO_EXT = /\.(mp3|wav|flac|m4a|ogg)$/i
+
+function iconFor(file: FileMetadata) {
+  if (file.type === "directory") return Folder
+  if (file.type === "image") return ImageIcon
+  if (file.type === "video") return Video
+  if (file.type === "document") return FileText
+  if (AUDIO_EXT.test(file.name)) return Music
+  return File
 }
 
 interface FileItem {
@@ -79,19 +100,10 @@ const thisPCItems: FileItem[] = [
   { id: "d-drive", name: "Data (D:)", type: "drive", icon: HardDrive },
 ]
 
-const documentsContent: FileItem[] = [
-  { id: "1", name: "Projects", type: "folder", icon: Folder, modified: "Jan 15, 2026" },
-  { id: "2", name: "Resume.pdf", type: "file", icon: FileText, modified: "Jan 10, 2026", size: "245 KB" },
-  { id: "3", name: "Notes.txt", type: "file", icon: FileText, modified: "Jan 8, 2026", size: "12 KB" },
-  { id: "4", name: "Photos", type: "folder", icon: ImageIcon, modified: "Dec 20, 2025" },
-  { id: "5", name: "Music", type: "folder", icon: Music, modified: "Nov 5, 2025" },
-  { id: "6", name: "report.docx", type: "file", icon: File, modified: "Jan 12, 2026", size: "156 KB" },
-  { id: "7", name: "Backup", type: "folder", icon: Folder, modified: "Jan 5, 2026" },
-  { id: "8", name: "screenshot.png", type: "file", icon: ImageIcon, modified: "Jan 14, 2026", size: "1.2 MB" },
-]
-
 interface FileExplorerProps {
   appId: string
+  /** Launch data from the window. `payload.path` selects the starting folder. */
+  payload?: WindowPayload
 }
 
 interface ContextMenuProps {
@@ -111,8 +123,8 @@ function ContextMenu({ x, y, item, onClose, onAction }: ContextMenuProps) {
         onClose()
       }
     }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
+    window.addEventListener("mousedown", handleClickOutside)
+    return () => window.removeEventListener("mousedown", handleClickOutside)
   }, [onClose])
 
   const menuItems = item
@@ -162,20 +174,16 @@ function ContextMenu({ x, y, item, onClose, onAction }: ContextMenuProps) {
   )
 }
 
-export function FileExplorer({ appId }: FileExplorerProps) {
-  const { openWindow } = useWindowStore()
+export function FileExplorer({ appId, payload }: FileExplorerProps) {
+  const openWindow = useWindowStore((s) => s.openWindow)
   const setCachedDirectory = useFileExplorerStore((state) => state.setCachedDirectory)
+  const clearCachedDirectory = useFileExplorerStore((state) => state.clearCachedDirectory)
   const vfsRef = useRef<VirtualFileSystem | null>(null)
   const requestIdRef = useRef(0)
 
   const mapFilesToItems = (files: FileMetadata[]): FileItem[] => {
     return files.map((file, index) => {
-      let icon = File
-      if (file.type === "image") icon = ImageIcon
-      else if (file.type === "document") icon = FileText
-      else if (file.type === "video") icon = Video
-      else if (file.type === "other" && file.name.includes(".")) icon = File
-      else icon = Folder
+      const icon = file.type === "directory" ? Folder : iconFor(file)
 
       let modified = ""
       if (file.modifiedDate) {
@@ -218,7 +226,7 @@ export function FileExplorer({ appId }: FileExplorerProps) {
     return "/"
   }
   
-  const initialPath = normalizeExplorerPath(getInitialPath())
+  const initialPath = normalizeExplorerPath(pathFromPayload(payload) ?? getInitialPath())
   const [currentPath, setCurrentPath] = useState(initialPath)
   const [pathHistory, setPathHistory] = useState<string[]>([initialPath])
   const [historyIndex, setHistoryIndex] = useState(0)
@@ -228,9 +236,11 @@ export function FileExplorer({ appId }: FileExplorerProps) {
   const [thisPCExpanded, setThisPCExpanded] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; item: FileItem | null } | null>(null)
-  const [sidebarSelectedId, setSidebarSelectedId] = useState<string | null>(appId === "projects" ? "projects" : "documents")
-  const [currentContent, setCurrentContent] = useState<FileItem[]>([])
+  const [sidebarSelectedId, setSidebarSelectedId] = useState<string | null>(sidebarIdForPath(initialPath))
+  const [loadedContent, setLoadedContent] = useState<FileItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   
   // Initialize VirtualFileSystem
   useEffect(() => {
@@ -239,68 +249,50 @@ export function FileExplorer({ appId }: FileExplorerProps) {
     }
   }, [])
   
-  // Load directory contents when path changes
+  // Load directory contents when the path changes.
+  // Search is filtered at render time (below), so typing never triggers a refetch.
   useEffect(() => {
-    const loadDirectory = async () => {
-      if (!vfsRef.current) return
+    const normalizedPath = normalizeExplorerPath(currentPath)
+    setLoadError(null)
 
-      const normalizedPath = normalizeExplorerPath(currentPath)
-
-      if (normalizedPath === INITIAL_HOME_PATH) {
-        const filteredHomeItems = searchQuery
-          ? initialHomeItems.filter((item) => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
-          : initialHomeItems
-        setCurrentContent(filteredHomeItems)
-        setIsLoading(false)
-        return
-      }
-
-      const cachedFiles = useFileExplorerStore.getState().directoryCache[normalizedPath]
-      const requestId = ++requestIdRef.current
-
-      if (cachedFiles) {
-        const cachedItems = mapFilesToItems(cachedFiles)
-        const filteredCachedItems = searchQuery
-          ? cachedItems.filter((item) => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
-          : cachedItems
-        setCurrentContent(filteredCachedItems)
-      } else {
-        setCurrentContent([])
-      }
-
-      setIsLoading(!cachedFiles)
-      try {
-        const files = await vfsRef.current.listFiles(normalizedPath)
-
-        // Ignore stale responses from earlier path loads.
-        if (requestId !== requestIdRef.current) {
-          return
-        }
-        
-        const items = mapFilesToItems(files)
-        setCachedDirectory(normalizedPath, files)
-        
-        // Apply search filter
-        let filtered = items
-        if (searchQuery) {
-          filtered = items.filter((item) => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
-        }
-        
-        setCurrentContent(filtered)
-      } catch (error) {
-        console.error('Failed to load directory:', error)
-        if (!cachedFiles) {
-          setCurrentContent([])
-        }
-      } finally {
-        if (requestId === requestIdRef.current) {
-          setIsLoading(false)
-        }
-      }
+    if (normalizedPath === INITIAL_HOME_PATH) {
+      setLoadedContent(initialHomeItems)
+      setIsLoading(false)
+      return
     }
-    
-    loadDirectory()
-  }, [currentPath, searchQuery])
+
+    const vfs = (vfsRef.current ??= new VirtualFileSystem())
+    const requestId = ++requestIdRef.current
+    const cached = useFileExplorerStore.getState().directoryCache[normalizedPath]
+
+    // Show cached contents instantly, then refresh from the server
+    setLoadedContent(cached ? mapFilesToItems(cached) : [])
+    setIsLoading(!cached)
+
+    vfs
+      .listFiles(normalizedPath)
+      .then((files) => {
+        if (requestId !== requestIdRef.current) return // stale response from an earlier path
+        // Only cache non-empty results so an empty/failed response can't pin a folder as empty
+        if (files.length > 0) setCachedDirectory(normalizedPath, files)
+        else clearCachedDirectory(normalizedPath)
+        setLoadedContent(mapFilesToItems(files))
+      })
+      .catch((error) => {
+        if (requestId !== requestIdRef.current) return
+        console.error("Failed to load directory:", error)
+        setLoadError("Couldn't load this folder.")
+      })
+      .finally(() => {
+        if (requestId === requestIdRef.current) setIsLoading(false)
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPath, reloadKey])
+
+  const currentContent = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return q ? loadedContent.filter((item) => item.name.toLowerCase().includes(q)) : loadedContent
+  }, [loadedContent, searchQuery])
 
   const navigateTo = (path: string) => {
     const normalizedPath = normalizeExplorerPath(path)
@@ -309,7 +301,22 @@ export function FileExplorer({ appId }: FileExplorerProps) {
     setHistoryIndex(newHistory.length - 1)
     setCurrentPath(normalizedPath)
     setSelectedItem(null)
+    setSearchQuery("")
   }
+
+  // When this window is re-launched with a new payload (e.g. the Pictures icon),
+  // navigate there instead of staying on the old folder.
+  const handledPayloadRef = useRef(payload)
+  useEffect(() => {
+    if (payload === handledPayloadRef.current) return
+    handledPayloadRef.current = payload
+    const target = pathFromPayload(payload)
+    if (target) {
+      navigateTo(target)
+      setSidebarSelectedId(sidebarIdForPath(target))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payload])
 
   const goBack = () => {
     if (historyIndex > 0) {
@@ -333,19 +340,21 @@ export function FileExplorer({ appId }: FileExplorerProps) {
   }
 
   const handleItemDoubleClick = (item: FileItem) => {
+    const itemPath = item.path ?? ""
     if (item.type === "folder") {
       navigateTo(item.path || item.name)
-    } else if (item.name.endsWith(".txt")) {
-      // Open text file in Notepad with file path
-      openWindow({ ...apps.notepad, props: { filePath: item.path } })
+    } else if (item.name.toLowerCase().endsWith(".txt")) {
+      // Notepad fetches a URL, and files are served from /public/files
+      openWindow(apps.notepad, { filePath: `/files${itemPath}` })
     } else if (item.name.toLowerCase().endsWith(".pdf")) {
-      openWindow(apps.pdf)
+      // Files are served from /public/files, so virtual path /Documents/x.pdf -> /files/Documents/x.pdf
+      openWindow(apps.pdf, { file: `/files${itemPath}` })
     }
   }
 
   const handleSidebarClick = (id: string, name: string) => {
     setSidebarSelectedId(id)
-    navigateTo(`/${name}`)
+    navigateTo(id === "c-drive" ? "/C" : id === "d-drive" ? "/D" : `/${name}`)
   }
 
   const handleContextMenu = (e: React.MouseEvent, item: FileItem | null) => {
@@ -354,9 +363,18 @@ export function FileExplorer({ appId }: FileExplorerProps) {
     if (item) setSelectedItem(item.id)
   }
 
+  // Clear BOTH caches (the store's and the VirtualFileSystem's own) before reloading,
+  // otherwise "refresh" just re-serves the same stale listing.
+  const reloadDirectory = () => {
+    const normalized = normalizeExplorerPath(currentPath)
+    vfsRef.current?.invalidateCache(normalized)
+    clearCachedDirectory(normalized)
+    setReloadKey((k) => k + 1)
+  }
+
   const handleContextAction = (action: string) => {
-    // Fake actions for demo
-    console.log(`Action: ${action}`, selectedItem)
+    if (action === "refresh") reloadDirectory()
+    // Other actions (cut/copy/rename/delete) are demo-only for now
   }
 
   const pathSegments = currentPath === "/" ? ["This PC"] : ["This PC", ...currentPath.split('/').filter(s => s.length > 0)]
@@ -434,7 +452,7 @@ export function FileExplorer({ appId }: FileExplorerProps) {
           <Search className="h-4 w-4 text-white/40 shrink-0" />
           <input
             type="text"
-            placeholder="Search Documents"
+            placeholder={`Search ${pathSegments[pathSegments.length - 1]}`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 bg-transparent text-[13px] text-white/90 placeholder:text-white/40 focus:outline-none"
@@ -628,7 +646,21 @@ export function FileExplorer({ appId }: FileExplorerProps) {
           {currentContent.length === 0 && (
             <div className="flex-1 flex flex-col items-center justify-center text-white/30">
               <Folder className="h-20 w-20 mb-3" strokeWidth={0.75} />
-              <span className="text-sm">This folder is empty</span>
+              {isLoading ? (
+                <span className="text-sm">Loading…</span>
+              ) : loadError ? (
+                <>
+                  <span className="text-sm">{loadError}</span>
+                  <button
+                    onClick={reloadDirectory}
+                    className="mt-3 rounded-md border border-white/15 px-3 py-1 text-[13px] text-white/70 hover:bg-white/10"
+                  >
+                    Try again
+                  </button>
+                </>
+              ) : (
+                <span className="text-sm">{searchQuery ? "No items match your search" : "This folder is empty"}</span>
+              )}
             </div>
           )}
         </div>

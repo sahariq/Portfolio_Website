@@ -1,7 +1,7 @@
 "use client"
 
 import { create } from "zustand"
-import type { WindowState, AppDefinition } from "@/types/os"
+import type { WindowState, AppDefinition, WindowPayload } from "@/types/os"
 
 interface WindowStore {
   windows: WindowState[]
@@ -9,7 +9,7 @@ interface WindowStore {
   highestZIndex: number
   startMenuOpen: boolean
 
-  openWindow: (app: AppDefinition) => void
+  openWindow: (app: AppDefinition, payload?: WindowPayload) => void
   closeWindow: (id: string) => void
   minimizeWindow: (id: string) => void
   maximizeWindow: (id: string) => void
@@ -23,27 +23,37 @@ interface WindowStore {
   getWindowById: (id: string) => WindowState | undefined
 }
 
+// Topmost visible window, used to hand focus over when one closes/minimizes
+function topWindowId(windows: WindowState[]): string | null {
+  const visible = windows.filter((w) => !w.isMinimized)
+  if (visible.length === 0) return null
+  return visible.reduce((a, b) => (b.zIndex > a.zIndex ? b : a)).id
+}
+
 export const useWindowStore = create<WindowStore>((set, get) => ({
   windows: [],
   activeWindowId: null,
   highestZIndex: 100,
   startMenuOpen: false,
 
-  openWindow: (app) => {
+  openWindow: (app, payload) => {
     const { windows, highestZIndex } = get()
-    const existingWindow = windows.find((w) => w.appId === app.id && !app.allowMultiple)
+    const existing = windows.find((w) => w.appId === app.id && !app.allowMultiple)
 
-    if (existingWindow) {
-      get().focusWindow(existingWindow.id)
+    if (existing) {
+      // Reuse the window with fresh launch data (a new object, so apps notice every re-launch)
+      if (payload) {
+        set((s) => ({
+          windows: s.windows.map((w) => (w.id === existing.id ? { ...w, payload: { ...payload } } : w)),
+        }))
+      }
+      get().focusWindow(existing.id)
       return
     }
 
     const id = `window-${Date.now()}-${Math.random().toString(36).slice(2)}`
     const newZIndex = highestZIndex + 1
-
-    const windowCount = windows.length
-    const offsetX = (windowCount % 10) * 30
-    const offsetY = (windowCount % 10) * 30
+    const offset = (windows.length % 10) * 30
 
     set({
       windows: [
@@ -53,8 +63,8 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
           appId: app.id,
           title: app.title,
           icon: app.icon,
-          x: app.defaultX ?? 100 + offsetX,
-          y: app.defaultY ?? 50 + offsetY,
+          x: app.defaultX ?? 100 + offset,
+          y: app.defaultY ?? 50 + offset,
           width: app.defaultWidth ?? 800,
           height: app.defaultHeight ?? 600,
           minWidth: app.minWidth ?? 400,
@@ -63,6 +73,7 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
           isMaximized: false,
           zIndex: newZIndex,
           snapEdge: null,
+          payload,
         },
       ],
       activeWindowId: id,
@@ -71,20 +82,27 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
   },
 
   closeWindow: (id) => {
-    set((state) => ({
-      windows: state.windows.filter((w) => w.id !== id),
-      activeWindowId: state.activeWindowId === id ? null : state.activeWindowId,
-    }))
+    set((state) => {
+      const windows = state.windows.filter((w) => w.id !== id)
+      return {
+        windows,
+        activeWindowId: state.activeWindowId === id ? topWindowId(windows) : state.activeWindowId,
+      }
+    })
   },
 
   minimizeWindow: (id) => {
-    set((state) => ({
-      windows: state.windows.map((w) => (w.id === id ? { ...w, isMinimized: true } : w)),
-      activeWindowId: state.activeWindowId === id ? null : state.activeWindowId,
-    }))
+    set((state) => {
+      const windows = state.windows.map((w) => (w.id === id ? { ...w, isMinimized: true } : w))
+      return {
+        windows,
+        activeWindowId: state.activeWindowId === id ? topWindowId(windows) : state.activeWindowId,
+      }
+    })
   },
 
   maximizeWindow: (id) => {
+    get().focusWindow(id)
     set((state) => ({
       windows: state.windows.map((w) =>
         w.id === id ? { ...w, isMaximized: true, isMinimized: false, snapEdge: null } : w,
@@ -93,6 +111,7 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
   },
 
   restoreWindow: (id) => {
+    get().focusWindow(id)
     set((state) => ({
       windows: state.windows.map((w) =>
         w.id === id ? { ...w, isMaximized: false, isMinimized: false, snapEdge: null } : w,
@@ -101,9 +120,7 @@ export const useWindowStore = create<WindowStore>((set, get) => ({
   },
 
   focusWindow: (id) => {
-    const { highestZIndex } = get()
-    const newZIndex = highestZIndex + 1
-
+    const newZIndex = get().highestZIndex + 1
     set((state) => ({
       windows: state.windows.map((w) => (w.id === id ? { ...w, zIndex: newZIndex, isMinimized: false } : w)),
       activeWindowId: id,

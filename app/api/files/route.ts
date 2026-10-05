@@ -1,50 +1,66 @@
-import { promises as fs } from 'fs';
-import { join } from 'path';
-import type { NextRequest } from 'next/server';
-import { NextResponse } from 'next/server';
+import { promises as fs } from "fs"
+import path from "path"
+import type { NextRequest } from "next/server"
+import { NextResponse } from "next/server"
 
-// Helper to validate and normalize paths (basic, for demo)
-function isValidPath(path: string) {
-  return typeof path === 'string' && !path.includes('..') && !path.includes('\0');
+export const dynamic = "force-dynamic"
+
+// The explorer is sandboxed to this folder. Nothing outside it is ever listed.
+// Create it and put your virtual folders inside, e.g.
+//   public/files/Documents, public/files/Pictures, public/files/Music
+const ROOT = path.resolve(process.cwd(), "public", "files")
+
+function normalizeApiPath(p: string) {
+  const withSlashes = p.replace(/\\/g, "/")
+  const withLeading = withSlashes.startsWith("/") ? withSlashes : `/${withSlashes}`
+  const collapsed = withLeading.replace(/\/+/g, "/")
+  return collapsed.length > 1 ? collapsed.replace(/\/+$/, "") : collapsed
 }
 
-function normalizeApiPath(path: string) {
-  const withForwardSlashes = path.replace(/\\/g, '/');
-  const withLeadingSlash = withForwardSlashes.startsWith('/') ? withForwardSlashes : `/${withForwardSlashes}`;
-  const normalized = withLeadingSlash.replace(/\/+/g, '/');
-  return normalized.length > 1 ? normalized.replace(/\/+$/, '') : normalized;
+// Resolve a virtual path to a real one and make sure it stays inside ROOT
+function resolveInsideRoot(virtualPath: string): string | null {
+  if (virtualPath.includes("\0")) return null
+  const abs = path.resolve(ROOT, "." + virtualPath)
+  if (abs !== ROOT && !abs.startsWith(ROOT + path.sep)) return null
+  return abs
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const dirPath = normalizeApiPath(searchParams.get('path') || '/');
-  if (!isValidPath(dirPath)) {
-    return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+  const virtualPath = normalizeApiPath(req.nextUrl.searchParams.get("path") || "/")
+  const absPath = resolveInsideRoot(virtualPath)
+
+  if (!absPath) {
+    return NextResponse.json({ error: "Invalid path" }, { status: 400 })
   }
+
   try {
-    const absPath = join(process.cwd(), dirPath);
-    const entries = await fs.readdir(absPath, { withFileTypes: true });
+    const entries = await fs.readdir(/* turbopackIgnore: true */ absPath, { withFileTypes: true })
+
     const files = await Promise.all(
-      entries.map(async (entry) => {
-        const fullPath = join(absPath, entry.name);
-        const stats = await fs.stat(fullPath);
-        return {
-          name: entry.name,
-          path: normalizeApiPath(`${dirPath}/${entry.name}`),
-          size: stats.size,
-          type: entry.isDirectory() ? 'directory' : 'file',
-          modifiedDate: stats.mtime,
-        };
-      })
-    );
-    return NextResponse.json(files);
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      return NextResponse.json({ error: 'Directory not found' }, { status: 404 });
+      entries
+        .filter((e) => !e.name.startsWith(".")) // hide dotfiles
+        .map(async (entry) => {
+          const fullPath = path.join(/* turbopackIgnore: true */ absPath, entry.name)
+          const stats = await fs.stat(fullPath)
+          return {
+            name: entry.name,
+            path: normalizeApiPath(`${virtualPath}/${entry.name}`),
+            size: stats.size,
+            type: entry.isDirectory() ? "directory" : "file",
+            modifiedDate: stats.mtime,
+          }
+        }),
+    )
+
+    return NextResponse.json(files, { headers: { "Cache-Control": "no-store" } })
+  } catch (error: unknown) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code === "ENOENT" || code === "ENOTDIR") {
+      return NextResponse.json({ error: "Directory not found" }, { status: 404 })
     }
-    if (error.code === 'EACCES') {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    if (code === "EACCES") {
+      return NextResponse.json({ error: "Permission denied" }, { status: 403 })
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Failed to read directory" }, { status: 500 })
   }
 }

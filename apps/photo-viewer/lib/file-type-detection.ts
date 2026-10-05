@@ -79,7 +79,7 @@ export function isVideo(filename: string): boolean {
  * @param filterType - The filter type: 'images', 'documents', 'videos', or 'all'
  * @returns Filtered array of files matching the specified type
  */
-export function filterFiles<T extends { type: 'image' | 'document' | 'video' | 'other' }>(
+export function filterFiles<T extends { type: 'directory' | 'image' | 'document' | 'video' | 'other' }>(
   files: T[],
   filterType: 'images' | 'documents' | 'videos' | 'all'
 ): T[] {

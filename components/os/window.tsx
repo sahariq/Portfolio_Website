@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState, useCallback, useEffect, type MouseEvent } from "react"
+import { useRef, useState, useCallback, useEffect, type MouseEvent as ReactMouseEvent } from "react"
 import { useWindowStore } from "@/store/window-store"
 import { useSettingsStore } from "@/store/settings-store"
 import { useSystemSounds } from "@/hooks/use-system-sounds"
@@ -52,8 +52,8 @@ export function Window({ window }: WindowProps) {
   const constrainWindowToViewport = useCallback(() => {
     if (isMobile || window.isMaximized || window.snapEdge || window.isMinimized) return
 
-    const viewportWidth = globalThis.innerWidth
-    const viewportHeight = globalThis.innerHeight - TASKBAR_HEIGHT
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight - TASKBAR_HEIGHT
     const maxX = Math.max(0, viewportWidth - window.width)
     const maxY = Math.max(0, viewportHeight - window.height)
 
@@ -79,8 +79,8 @@ export function Window({ window }: WindowProps) {
       constrainWindowToViewport()
     }
 
-    globalThis.addEventListener("resize", handleViewportResize)
-    return () => globalThis.removeEventListener("resize", handleViewportResize)
+    window.addEventListener("resize", handleViewportResize)
+    return () => window.removeEventListener("resize", handleViewportResize)
   }, [constrainWindowToViewport])
 
   useEffect(() => {
@@ -103,7 +103,7 @@ export function Window({ window }: WindowProps) {
         setMinimizeTarget({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
       } else {
         // Fallback to center of taskbar
-        setMinimizeTarget({ x: globalThis.innerWidth / 2, y: globalThis.innerHeight - 24 })
+        setMinimizeTarget({ x: window.innerWidth / 2, y: window.innerHeight - 24 })
       }
       setIsMinimizing(true)
 
@@ -132,7 +132,7 @@ export function Window({ window }: WindowProps) {
   }, [maximizeWindow, playMaximize, restoreWindow, window.id, window.isMaximized])
 
   const handleTitleBarMouseDown = useCallback(
-    (e: MouseEvent) => {
+    (e: ReactMouseEvent) => {
       if (isMobile) return
       if ((e.target as HTMLElement).closest(".window-controls")) return
       e.preventDefault()
@@ -151,7 +151,7 @@ export function Window({ window }: WindowProps) {
   )
 
   const handleResizeStart = useCallback(
-    (e: MouseEvent, edge: string) => {
+    (e: ReactMouseEvent, edge: string) => {
       e.preventDefault()
       e.stopPropagation()
       focusWindow(window.id)
@@ -176,13 +176,13 @@ export function Window({ window }: WindowProps) {
   useEffect(() => {
     const handleMouseMove = (e: globalThis.MouseEvent) => {
       if (isDragging) {
-        const viewportWidth = globalThis.innerWidth
-        const viewportHeight = globalThis.innerHeight - TASKBAR_HEIGHT
+        const viewportWidth = window.innerWidth
+        const viewportHeight = window.innerHeight - TASKBAR_HEIGHT
         const maxX = Math.max(0, viewportWidth - window.width)
         const maxY = Math.max(0, viewportHeight - window.height)
         const newX = Math.min(Math.max(0, e.clientX - dragOffset.x), maxX)
         const newY = Math.min(Math.max(0, e.clientY - dragOffset.y), maxY)
-        const screenWidth = globalThis.innerWidth
+        const screenWidth = window.innerWidth
 
         if (e.clientX <= SNAP_THRESHOLD) {
           setPreviewSnap("left")
@@ -205,8 +205,8 @@ export function Window({ window }: WindowProps) {
         let newX = resizeStart.winX
         let newY = resizeStart.winY
 
-        const viewportWidth = globalThis.innerWidth
-        const viewportHeight = globalThis.innerHeight - TASKBAR_HEIGHT
+        const viewportWidth = window.innerWidth
+        const viewportHeight = window.innerHeight - TASKBAR_HEIGHT
 
         if (resizeEdge.includes("e")) newWidth = Math.max(window.minWidth, resizeStart.width + deltaX)
         if (resizeEdge.includes("w")) {

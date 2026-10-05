@@ -11,7 +11,7 @@ export interface FileMetadata {
   name: string
   path: string
   size: number // bytes
-  type: 'image' | 'document' | 'video' | 'other'
+  type: 'directory' | 'image' | 'document' | 'video' | 'other'
   modifiedDate: Date
   dimensions?: { width: number; height: number }
 }

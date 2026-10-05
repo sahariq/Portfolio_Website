@@ -1,3 +1,5 @@
+export type WindowPayload = Record<string, unknown>
+
 export interface WindowState {
   id: string
   appId: string
@@ -13,6 +15,8 @@ export interface WindowState {
   isMaximized: boolean
   zIndex: number
   snapEdge: "left" | "right" | "top" | null
+  /** Per-window launch data, e.g. { path: "/Pictures" } for the file explorer */
+  payload?: WindowPayload
 }
 
 export interface AppDefinition {
@@ -34,4 +38,7 @@ export interface DesktopIconData {
   icon: string
   appId: string
   gridPosition: { row: number; col: number }
+  description?: string
+  /** Passed to openWindow so one app can open at different places */
+  payload?: WindowPayload
 }
