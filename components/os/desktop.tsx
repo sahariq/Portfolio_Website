@@ -9,7 +9,8 @@ import { Taskbar } from "./taskbar"
 import { useEffect, useRef } from "react"
 
 export function Desktop() {
-  const { windows, setStartMenuOpen, openWindow } = useWindowStore()
+  const windows = useWindowStore((s) => s.windows)
+  const setStartMenuOpen = useWindowStore((s) => s.setStartMenuOpen)
   const { playOpen } = useSystemSounds()
   const videoRef = useRef<HTMLVideoElement>(null)
 
@@ -104,8 +105,8 @@ export function Desktop() {
   }, [])
 
   return (
-    <div 
-      className="relative h-[100dvh] w-screen overflow-hidden select-none" 
+    <div
+      className="relative h-[100dvh] w-screen overflow-hidden select-none"
       onClick={() => setStartMenuOpen(false)}
       suppressHydrationWarning
     >
@@ -152,8 +153,8 @@ export function Desktop() {
       </div>
 
       {/* Windows */}
-      {windows.map((window) => (
-        <Window key={window.id} window={window} />
+      {windows.map((win) => (
+        <Window key={win.id} win={win} />
       ))}
 
       {/* Taskbar */}
